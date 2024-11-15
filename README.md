@@ -8,8 +8,8 @@ every night - the cronjob is setup to run every night at midnight. The nightly e
 
 There are two scripts in the package.
 
-**arxiv_digest.py**: This is the main python script that queries the arxiv API, parses the results, and sends the email.
-**arxiv_digest.sh**: This is a helper script that is called from the cron job, and mainly just creates a temporary python environment to run the `arxiv_digest.py` script.
+**arxiv_digest.py**: This is the main python script that queries the arxiv API, parses the results, and sends the email.</br>
+**arxiv_digest.sh**: This is a helper script that is called from the cron job, and mainly just creates a temporary python environment to run the `arxiv_digest.py` script.</br>
 
 ## Requirements
 
@@ -28,20 +28,20 @@ If successful, you should have a nice new email in your Inbox! If not, well, goo
 
 The script itself takes the following arguments:
 
-**python_script_path**: This is the full path to the `arxiv_digest.py` script. It's used to make sure the cronjob can find the right script to run.
-**recipient_email**: This is the email address where you will send the digest. Please make sure this is your email address, let's not spam any random people.
-**sender_email**: This is the email address that will be used to send the email digest to the recipient. You will need to own credentials for this address to make sure it works.
-**sender_password**: This is the app password for the `sender_email` account. This is used to authenticate to the SMTP server to send the email digest.
-**subject_title**: A short title to appear in the email subject line. The subject line will be formatted as: `Daily Digest: Latest {subject_title} Papers on arXiv {date}`.
-**header_title**: The header of the email body. Can be the same as the `subject_title`. Will be formatted as: `Latest {header_title} Papers from arXiv`.
-**search_query**: This is the query to use in the arxiv API. I have put two example queries below, one for language modeling and one for diffusion modeling.
+**python_script_path**: This is the full path to the `arxiv_digest.py` script. It's used to make sure the cronjob can find the right script to run.</br>
+**recipient_email**: This is the email address where you will send the digest. Please make sure this is your email address, let's not spam any random people.</br>
+**sender_email**: This is the email address that will be used to send the email digest to the recipient. You will need to own credentials for this address to make sure it works.</br>
+**sender_password**: This is the app password for the `sender_email` account. This is used to authenticate to the SMTP server to send the email digest.</br>
+**subject_title**: A short title to appear in the email subject line. The subject line will be formatted as: `Daily Digest: Latest {subject_title} Papers on arXiv {date}`.</br>
+**header_title**: The header of the email body. Can be the same as the `subject_title`. Will be formatted as: `Latest {header_title} Papers from arXiv`.</br>
+**search_query**: This is the query to use in the arxiv API. I have put two example queries below, one for language modeling and one for diffusion modeling.</br>
 
 ### Sample Search Queries
 
 | Query | Description
 | ----- | -----
-| '(cat:cs.CL OR cat:cs.AI) AND (abs:"language model" OR abs:"LLM" OR abs:"large language model" OR abs:"small language model")' | Queries for papers related to language modeling.
-| '(cat:cs.CL OR cat:cs.AI) AND (abs:"diffusion model")' | Queries for papers related to diffusion modeling.
+| `'(cat:cs.CL OR cat:cs.AI) AND (abs:"language model" OR abs:"LLM" OR abs:"large language model" OR abs:"small language model")'` | Queries for papers related to language modeling.
+| `'(cat:cs.CL OR cat:cs.AI) AND (abs:"diffusion model")'` | Queries for papers related to diffusion modeling.
 
 ### Setting up the Cronjob
 
