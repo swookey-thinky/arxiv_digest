@@ -7,8 +7,8 @@ import requests
 import smtplib
 import xml.etree.ElementTree as ET
 
-LANGUAGE_MODELING_SEARCH_QUERY = '(cat:cs.CL OR cat:cs.AI) AND (abs:"language model" OR abs:"LLM" OR abs:"large language model" OR abs:"small language model")'
-DIFFUSION_MODELING_SEARCH_QUERY = '(cat:cs.CL OR cat:cs.AI) AND (abs:"diffusion model")'
+LANGUAGE_MODELING_SEARCH_QUERY = '(cat:cs.CL OR cat:cs.CV OR cat:cs.AI) AND (abs:"language model" OR abs:"LLM" OR abs:"MLLM" OR abs:"large language model" OR abs:"small language model")'
+DIFFUSION_MODELING_SEARCH_QUERY = '(cat:cs.CL OR cat:cs.CV OR cat:cs.AI) AND (abs:"diffusion model" OR abs:"diffusion")'
 
 
 def get_yesterday_papers(search_query: str):
