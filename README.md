@@ -19,3 +19,9 @@ and a python script to query the arxiv API:
 
 ```
 ```
+
+For example, here is my language modeling script invocation (make sure to replace `<email address>` with your own):
+
+```
+python arxiv_digest.py --recipient_email <email address> --subject_title LLM --header_title "Language Modeling (T)" --search_query '(cat:cs.CL OR cat:cs.AI) AND (abs:"language model" OR abs:"LLM" OR abs:"large language model" OR abs:"small language model")'
+```
