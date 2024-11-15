@@ -42,8 +42,8 @@ The script itself takes the following arguments:
 
 | Query | Description
 | ----- | -----
-| `'(cat:cs.CL OR cat:cs.AI) AND (abs:"language model" OR abs:"LLM" OR abs:"large language model" OR abs:"small language model")'` | Queries for papers related to language modeling.
-| `'(cat:cs.CL OR cat:cs.AI) AND (abs:"diffusion model")'` | Queries for papers related to diffusion modeling.
+| `'(cat:cs.CL OR cat:cs.CV OR cat:cs.AI) AND (abs:"language model" OR abs:"LLM" OR abs:"MLLM" OR abs:"large language model" OR abs:"small language model")'` | Queries for papers related to language modeling.
+| `'(cat:cs.CL OR cat:cs.CV OR cat:cs.AI) AND (abs:"diffusion model" OR abs:"diffusion")'` | Queries for papers related to diffusion modeling.
 
 ### Setting up the Cronjob
 
