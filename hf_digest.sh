@@ -68,7 +68,7 @@ echo "Installing in '$temp_dir'"
 python3 -m venv $temp_dir
 source $temp_dir/bin/activate
 python3 -m pip install --upgrade pip
-python3 -m pip install requests
+python3 -m pip install requests beautifulsoup4
 python3 $python_script_path --recipient_email "$recipient_email" --subject_title "$subject_title" --header_title "$header_title"
 deactivate
 rm -rf $temp_dir
