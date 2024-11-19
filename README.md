@@ -56,4 +56,5 @@ Now, to setup the cronjob, remember the directory where you cloned the repositor
 In the cronjob window, add the following line, which creates a task the run the scripts above. I have added a task for language modeling, but feel free to add your own:
 
 ```
+0 0 * * * /bin/bash <full path of arxiv_digest.sh> --python_script_path <full path of arxiv_digest.py> --recipient_email <recipient email> --subject_title "LLM" --header_title "Language Modeling" --search_query '(cat:cs.CL OR cat:cs.CV OR cat:cs.AI) AND (abs:"language model" OR abs:"LLM" OR abs:"MLLM" OR abs:"large language model" OR abs:"small language model")' --sender_email <sender email> --sender_password <sender password> >> /Users/<user name>/nightly_llm_task_log.txt 2>&1
 ```
