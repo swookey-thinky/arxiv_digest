@@ -20,7 +20,7 @@ export function TagFilter({ selectedTag, onTagSelect }: TagFilterProps) {
         <Tag className="w-5 h-5" />
         Filter by Tag
       </h2>
-      <div className="space-y-2">
+      <div className="space-y-1 max-h-[280px] md:max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <button
           onClick={() => onTagSelect(null)}
           className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
