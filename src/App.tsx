@@ -1,40 +1,55 @@
 import React, { useState } from 'react';
 import { BookOpen, Loader2 } from 'lucide-react';
 import { useArxivPapers } from './hooks/useArxivPapers';
-import { useFilteredPapers } from './hooks/useFilteredPapers';
-import { useArxivQueries } from './hooks/useArxivQueries';
 import { PaperCard } from './components/PaperCard';
 import { AuthProvider } from './contexts/AuthContext';
 import { UserMenu } from './components/UserMenu';
 import { LoginButton } from './components/LoginButton';
-import { TagFilter } from './components/TagFilter';
 import { DatePicker } from './components/DatePicker';
 import { QueryPicker } from './components/QueryPicker';
+import { TagFilter } from './components/TagFilter';
 import { PaperSidebar } from './components/PaperSidebar';
+import { KeywordSearch } from './components/KeywordSearch';
+import { TitleSearch } from './components/TitleSearch';
+import { useArxivQueries } from './hooks/useArxivQueries';
 import { useAuth } from './contexts/AuthContext';
+import { useFilteredPapers } from './hooks/useFilteredPapers';
 import type { Paper } from './types';
 
 function Dashboard() {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  
-  const defaultStart = new Date(today);
-  defaultStart.setUTCDate(today.getUTCDate() - 1);
-
-  const [startDate, setStartDate] = useState<Date>(defaultStart);
-  const [endDate, setEndDate] = useState<Date>(today);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
+  const { user } = useAuth();
   const { defaultQuery } = useArxivQueries();
   const [currentQuery, setCurrentQuery] = useState(defaultQuery);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   
-  const { papers, loading: papersLoading, error } = useArxivPapers(startDate, endDate, currentQuery);
-  const { filteredPapers, loading: filterLoading } = useFilteredPapers(papers, selectedTag);
-  const { user } = useAuth();
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 1);
+    date.setUTCHours(0, 0, 0, 0);
+    return date;
+  });
+  
+  const [endDate, setEndDate] = useState(() => {
+    const date = new Date();
+    date.setUTCHours(23, 59, 59, 999);
+    return date;
+  });
 
-  const handleDateRangeChange = (start: Date, end: Date) => {
-    setStartDate(start);
-    setEndDate(end);
+  const { papers, loading: papersLoading, error: papersError } = useArxivPapers(startDate, endDate, currentQuery);
+  const { filteredPapers, loading: filterLoading } = useFilteredPapers(papers, selectedTag);
+
+  const loading = papersLoading || filterLoading;
+  const error = papersError;
+
+  const handleQueryChange = (query: string) => {
+    setCurrentQuery(query);
+    setSelectedTag(null); // Clear tag selection when query changes
+  };
+
+  const handleTagSelect = (tag: string | null) => {
+    setSelectedTag(tag);
+    setCurrentQuery(null); // Reset to default query when tag is selected
   };
 
   if (!user) {
@@ -46,7 +61,7 @@ function Dashboard() {
             <h1 className="text-4xl font-bold text-gray-900">ArXiv AI Papers</h1>
           </div>
           <p className="text-xl text-gray-600 mb-8">
-            Sign in to access the latest Research Papers
+            Sign in to access the latest LLM and Diffusion Model research papers
           </p>
           <LoginButton />
         </div>
@@ -63,35 +78,45 @@ function Dashboard() {
             <div>
               <h1 className="text-4xl font-bold text-gray-900">ArXiv AI Papers</h1>
               <p className="text-xl text-gray-600">
-                Latest Research Papers from Arxiv
+                Latest LLM and Diffusion Model Research Papers
               </p>
             </div>
           </div>
           <UserMenu />
         </header>
 
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="md:w-64">
-            <TagFilter selectedTag={selectedTag} onTagSelect={setSelectedTag} />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-1 space-y-6">
+            <TagFilter
+              selectedTag={selectedTag}
+              onTagSelect={handleTagSelect}
+            />
+            <QueryPicker
+              currentQuery={currentQuery}
+              onQueryChange={handleQueryChange}
+            />
+            <TitleSearch 
+              onPaperSelect={setSelectedPaper}
+              selectedPaperId={selectedPaper?.id}
+            />
+            <KeywordSearch
+              onPaperSelect={setSelectedPaper}
+              selectedPaperId={selectedPaper?.id}
+            />
           </div>
 
-          <div className="flex-1">
-            {!selectedTag && (
-              <>
-                <DatePicker 
-                  startDate={startDate}
-                  endDate={endDate}
-                  onDateChange={handleDateRangeChange}
-                />
-                <QueryPicker
-                  currentQuery={currentQuery}
-                  onQueryChange={setCurrentQuery}
-                />
-              </>
-            )}
+          <div className="lg:col-span-3">
+            <DatePicker
+              startDate={startDate}
+              endDate={endDate}
+              onDateChange={(start, end) => {
+                setStartDate(start);
+                setEndDate(end);
+              }}
+            />
 
-            {(papersLoading || filterLoading) && (
-              <div className="flex items-center justify-center">
+            {loading && (
+              <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
             )}
@@ -103,56 +128,41 @@ function Dashboard() {
               </div>
             )}
 
-            {!papersLoading && !filterLoading && !error && (
+            {!loading && !error && (
               <div className="mb-6 text-center">
                 <div className="inline-block bg-white px-4 py-2 rounded-full shadow-sm">
                   <span className="font-medium text-gray-700">
                     {filteredPapers.length === 0 ? 'No papers found' : `${filteredPapers.length} paper${filteredPapers.length === 1 ? '' : 's'} found`}
                   </span>
-                  {selectedTag ? (
-                    <span className="text-gray-500 ml-1">tagged with "{selectedTag}"</span>
-                  ) : (
-                    <span className="text-gray-500 ml-1">
-                      from {startDate.toLocaleDateString()} to {endDate.toLocaleDateString()}
-                    </span>
-                  )}
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {filteredPapers.map((paper) => (
-                <PaperCard 
-                  key={paper.id} 
-                  paper={paper} 
+                <PaperCard
+                  key={paper.id}
+                  paper={paper}
                   onSelect={() => setSelectedPaper(paper)}
                   isSelected={selectedPaper?.id === paper.id}
                 />
               ))}
             </div>
 
-            {!papersLoading && !filterLoading && filteredPapers.length === 0 && !error && (
+            {!loading && filteredPapers.length === 0 && !error && (
               <div className="text-center text-gray-600 bg-white p-8 rounded-lg shadow">
-                <p className="text-lg font-medium">
-                  {selectedTag 
-                    ? `No papers found with tag "${selectedTag}"`
-                    : 'No papers found for selected date range'}
-                </p>
-                <p className="mt-2">
-                  {selectedTag 
-                    ? 'Try selecting a different tag or view all papers'
-                    : 'Try selecting a different date range'}
-                </p>
+                <p className="text-lg font-medium">No papers found</p>
+                <p className="mt-2">Try adjusting your search criteria</p>
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      <PaperSidebar 
-        paper={selectedPaper} 
-        onClose={() => setSelectedPaper(null)} 
-      />
+        <PaperSidebar
+          paper={selectedPaper}
+          onClose={() => setSelectedPaper(null)}
+        />
+      </div>
     </div>
   );
 }

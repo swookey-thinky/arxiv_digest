@@ -12,13 +12,17 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
   useEffect(() => {
     if (!selectedTag) {
       setFilteredPapers(papers);
+      setLoading(false);
       return;
     }
 
     if (!user) {
       setFilteredPapers([]);
+      setLoading(false);
       return;
     }
+
+    const controller = new AbortController();
 
     async function filterPapers() {
       setLoading(true);
@@ -33,17 +37,16 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
         const snapshot = await getDocs(tagsQuery);
         const taggedPaperIds = new Set(snapshot.docs.map(doc => doc.data().paperId));
 
-        // If we have papers from the date range, prioritize showing those first
-        const papersFromDateRange = papers.filter(paper => taggedPaperIds.has(paper.id));
-        const otherTaggedPapers: Paper[] = [];
-
-        // For each tagged paper ID that's not in the current date range,
-        // fetch its data from ArXiv API
+        // If we have papers from the current set that have this tag, include them
+        const papersWithTag = papers.filter(paper => taggedPaperIds.has(paper.id));
+        
+        // Find paper IDs that aren't in the current set but have the tag
         const missingPaperIds = Array.from(taggedPaperIds)
           .filter(id => !papers.some(p => p.id === id));
 
-        if (missingPaperIds.length > 0) {
-          const fetchPromises = missingPaperIds.map(async (id) => {
+        // Fetch missing papers from ArXiv API
+        const additionalPapers = await Promise.all(
+          missingPaperIds.map(async (id) => {
             try {
               const response = await fetch(
                 `https://corsproxy.io/?${encodeURIComponent(
@@ -52,7 +55,8 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
                 {
                   headers: {
                     'Accept': 'application/xml'
-                  }
+                  },
+                  signal: controller.signal
                 }
               );
 
@@ -78,23 +82,31 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
 
               return paper;
             } catch (error) {
+              if (error instanceof Error && error.name === 'AbortError') {
+                throw error;
+              }
               console.error('Error fetching paper:', error);
               return null;
             }
-          });
+          })
+        );
 
-          const additionalPapers = (await Promise.all(fetchPromises))
-            .filter((paper): paper is Paper => paper !== null);
-          
-          otherTaggedPapers.push(...additionalPapers);
-        }
+        // Combine papers from current set and additional fetched papers
+        const allPapers = [
+          ...papersWithTag,
+          ...additionalPapers.filter((p): p is Paper => p !== null)
+        ];
 
-        // Combine and sort all papers by date
-        const allTaggedPapers = [...papersFromDateRange, ...otherTaggedPapers]
-          .sort((a, b) => new Date(b.published).getTime() - new Date(a.published).getTime());
+        // Sort by publication date
+        allPapers.sort((a, b) => 
+          new Date(b.published).getTime() - new Date(a.published).getTime()
+        );
 
-        setFilteredPapers(allTaggedPapers);
+        setFilteredPapers(allPapers);
       } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
         console.error('Error filtering papers by tag:', error);
         setFilteredPapers(papers);
       } finally {
@@ -103,6 +115,8 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
     }
 
     filterPapers();
+
+    return () => controller.abort();
   }, [papers, selectedTag, user]);
 
   return { filteredPapers, loading };

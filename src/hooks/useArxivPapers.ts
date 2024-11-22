@@ -70,7 +70,6 @@ function parseArxivXML(xmlString: string, startDate: Date, endDate: Date): Paper
       }
     } catch (e) {
       console.error('Error parsing entry:', e);
-      // Continue with next entry instead of breaking the entire parse
       continue;
     }
   }
@@ -84,6 +83,8 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchPapers = async () => {
       try {
         setLoading(true);
@@ -92,8 +93,11 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
         const startStr = startDate.toISOString().split('T')[0].replace(/-/g, '');
         const endStr = endDate.toISOString().split('T')[0].replace(/-/g, '');
 
+        // Properly encode the search query
+        const searchQuery = `${query} AND submittedDate:[${startStr}0000 TO ${endStr}2359]`;
+        
         const params = new URLSearchParams({
-          search_query: `${encodeURIComponent(query)} AND submittedDate:[${startStr}0000 TO ${endStr}2359]`,
+          search_query: searchQuery,
           start: '0',
           max_results: '1000',
           sortBy: 'submittedDate',
@@ -104,8 +108,10 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
 
         const response = await fetch(url, {
           headers: {
-            'Accept': 'application/xml'
-          }
+            'Accept': 'application/xml',
+            'User-Agent': 'Mozilla/5.0 (compatible; ArxivDigest/1.0;)'
+          },
+          signal: controller.signal
         });
         
         if (!response.ok) {
@@ -118,9 +124,18 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
           throw new Error('Empty response from arXiv API');
         }
 
+        // Check if the response contains an error message
+        if (xmlData.includes('<error>')) {
+          const errorMatch = xmlData.match(/<error>(.*?)<\/error>/);
+          throw new Error(errorMatch ? errorMatch[1] : 'ArXiv API error');
+        }
+
         const parsedPapers = parseArxivXML(xmlData, startDate, endDate);
         setPapers(parsedPapers);
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
         console.error('ArXiv API Error:', err);
         setError(
           err instanceof Error 
@@ -133,7 +148,13 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
       }
     };
 
-    fetchPapers();
+    // Add a small delay to prevent rate limiting
+    const timeoutId = setTimeout(fetchPapers, 100);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, [startDate, endDate, query]);
 
   return { papers, loading, error };
