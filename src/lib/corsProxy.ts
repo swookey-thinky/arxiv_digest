@@ -18,7 +18,7 @@ export async function fetchWithCorsProxy(url: string, options: RequestInit = {})
         ...options,
         headers: {
           ...options.headers,
-          'User-Agent': 'Mozilla/5.0 (compatible; ArxivDigest/1.0;)',
+          'User-Agent': 'Mozilla/5.0',
         },
       });
 
@@ -40,7 +40,7 @@ export async function fetchWithCorsProxy(url: string, options: RequestInit = {})
         ...options,
         headers: {
           ...options.headers,
-          'User-Agent': 'Mozilla/5.0 (compatible; ArxivDigest/1.0;)',
+          'User-Agent': 'Mozilla/5.0',
         },
       });
 
