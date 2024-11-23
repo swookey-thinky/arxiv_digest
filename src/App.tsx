@@ -61,7 +61,7 @@ function Dashboard() {
             <h1 className="text-4xl font-bold text-gray-900">ArXiv AI Papers</h1>
           </div>
           <p className="text-xl text-gray-600 mb-8">
-            Sign in to access the latest research papers on ArXiv
+            Sign in to access the latest research papers from ArXiv
           </p>
           <LoginButton />
         </div>

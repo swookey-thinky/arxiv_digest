@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Paper } from '../types';
 
-const CORS_PROXY = 'https://corsproxy.io/?';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 const ARXIV_API_URL = 'https://export.arxiv.org/api/query';
 
 export function useTitleSearch(searchTerm: string) {
@@ -30,10 +30,14 @@ export function useTitleSearch(searchTerm: string) {
           sortOrder: 'descending'
         });
 
-        const url = `${CORS_PROXY}${encodeURIComponent(`${ARXIV_API_URL}?${params}`)}`;
+        const arxivUrl = `${ARXIV_API_URL}?${params}`;
+        const url = `${CORS_PROXY}${encodeURIComponent(arxivUrl)}`;
         
         const response = await fetch(url, {
-          headers: { 'Accept': 'application/xml' },
+          headers: {
+            'Accept': 'application/xml',
+            'User-Agent': 'Mozilla/5.0 (compatible; ArxivDigest/1.0;)'
+          },
           signal: controller.signal
         });
 

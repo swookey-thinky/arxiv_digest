@@ -4,6 +4,9 @@ import { db } from '../lib/firebase';
 import type { Paper } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+const ARXIV_API_URL = 'https://export.arxiv.org/api/query';
+
 export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
   const [filteredPapers, setFilteredPapers] = useState<Paper[]>(papers);
   const [loading, setLoading] = useState(false);
@@ -48,17 +51,20 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
         const additionalPapers = await Promise.all(
           missingPaperIds.map(async (id) => {
             try {
-              const response = await fetch(
-                `https://corsproxy.io/?${encodeURIComponent(
-                  `https://export.arxiv.org/api/query?id_list=${id.split('/').pop()}`
-                )}`,
-                {
-                  headers: {
-                    'Accept': 'application/xml'
-                  },
-                  signal: controller.signal
-                }
-              );
+              const params = new URLSearchParams({
+                id_list: id.split('/').pop() || '',
+              });
+
+              const arxivUrl = `${ARXIV_API_URL}?${params}`;
+              const url = `${CORS_PROXY}${encodeURIComponent(arxivUrl)}`;
+
+              const response = await fetch(url, {
+                headers: {
+                  'Accept': 'application/xml',
+                  'User-Agent': 'Mozilla/5.0 (compatible; ArxivDigest/1.0;)'
+                },
+                signal: controller.signal
+              });
 
               if (!response.ok) return null;
 

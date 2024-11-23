@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Paper } from '../types';
 
-const CORS_PROXY = 'https://corsproxy.io/?';
+// Using a more reliable CORS proxy
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 const ARXIV_API_URL = 'https://export.arxiv.org/api/query';
 
 function parseArxivXML(xmlString: string, startDate: Date, endDate: Date): Paper[] {
@@ -104,7 +105,8 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
           sortOrder: 'descending'
         });
 
-        const url = `${CORS_PROXY}${encodeURIComponent(`${ARXIV_API_URL}?${params}`)}`;
+        const arxivUrl = `${ARXIV_API_URL}?${params}`;
+        const url = `${CORS_PROXY}${encodeURIComponent(arxivUrl)}`;
 
         const response = await fetch(url, {
           headers: {
