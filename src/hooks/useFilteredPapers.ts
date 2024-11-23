@@ -3,8 +3,8 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { Paper } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchWithCorsProxy } from '../lib/corsProxy';
 
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 const ARXIV_API_URL = 'https://export.arxiv.org/api/query';
 
 export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
@@ -30,7 +30,6 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
     async function filterPapers() {
       setLoading(true);
       try {
-        // Query all papers with this tag for the current user
         const tagsQuery = query(
           collection(db, 'paperTags'),
           where('userId', '==', user.uid),
@@ -40,14 +39,11 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
         const snapshot = await getDocs(tagsQuery);
         const taggedPaperIds = new Set(snapshot.docs.map(doc => doc.data().paperId));
 
-        // If we have papers from the current set that have this tag, include them
         const papersWithTag = papers.filter(paper => taggedPaperIds.has(paper.id));
         
-        // Find paper IDs that aren't in the current set but have the tag
         const missingPaperIds = Array.from(taggedPaperIds)
           .filter(id => !papers.some(p => p.id === id));
 
-        // Fetch missing papers from ArXiv API
         const additionalPapers = await Promise.all(
           missingPaperIds.map(async (id) => {
             try {
@@ -56,17 +52,13 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
               });
 
               const arxivUrl = `${ARXIV_API_URL}?${params}`;
-              const url = `${CORS_PROXY}${encodeURIComponent(arxivUrl)}`;
-
-              const response = await fetch(url, {
+              
+              const response = await fetchWithCorsProxy(arxivUrl, {
                 headers: {
-                  'Accept': 'application/xml',
-                  'User-Agent': 'Mozilla/5.0 (compatible; ArxivDigest/1.0;)'
+                  'Accept': 'application/xml'
                 },
                 signal: controller.signal
               });
-
-              if (!response.ok) return null;
 
               const xmlText = await response.text();
               const parser = new DOMParser();
@@ -97,13 +89,11 @@ export function useFilteredPapers(papers: Paper[], selectedTag: string | null) {
           })
         );
 
-        // Combine papers from current set and additional fetched papers
         const allPapers = [
           ...papersWithTag,
           ...additionalPapers.filter((p): p is Paper => p !== null)
         ];
 
-        // Sort by publication date
         allPapers.sort((a, b) => 
           new Date(b.published).getTime() - new Date(a.published).getTime()
         );

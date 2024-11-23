@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
 import type { Paper } from '../types';
+import { fetchWithCorsProxy } from '../lib/corsProxy';
 
-// Using a more reliable CORS proxy
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 const ARXIV_API_URL = 'https://export.arxiv.org/api/query';
 
 function parseArxivXML(xmlString: string, startDate: Date, endDate: Date): Paper[] {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlString, 'application/xml');
   
-  // Check for XML parsing errors
   const parseError = xmlDoc.querySelector('parsererror');
   if (parseError) {
     throw new Error('Failed to parse ArXiv API response');
@@ -94,7 +92,6 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
         const startStr = startDate.toISOString().split('T')[0].replace(/-/g, '');
         const endStr = endDate.toISOString().split('T')[0].replace(/-/g, '');
 
-        // Properly encode the search query
         const searchQuery = `${query} AND submittedDate:[${startStr}0000 TO ${endStr}2359]`;
         
         const params = new URLSearchParams({
@@ -106,19 +103,13 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
         });
 
         const arxivUrl = `${ARXIV_API_URL}?${params}`;
-        const url = `${CORS_PROXY}${encodeURIComponent(arxivUrl)}`;
-
-        const response = await fetch(url, {
+        
+        const response = await fetchWithCorsProxy(arxivUrl, {
           headers: {
-            'Accept': 'application/xml',
-            'User-Agent': 'Mozilla/5.0 (compatible; ArxivDigest/1.0;)'
+            'Accept': 'application/xml'
           },
           signal: controller.signal
         });
-        
-        if (!response.ok) {
-          throw new Error(`ArXiv API error: ${response.status} ${response.statusText}`);
-        }
         
         const xmlData = await response.text();
 
@@ -126,7 +117,6 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
           throw new Error('Empty response from arXiv API');
         }
 
-        // Check if the response contains an error message
         if (xmlData.includes('<error>')) {
           const errorMatch = xmlData.match(/<error>(.*?)<\/error>/);
           throw new Error(errorMatch ? errorMatch[1] : 'ArXiv API error');
@@ -150,7 +140,6 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
       }
     };
 
-    // Add a small delay to prevent rate limiting
     const timeoutId = setTimeout(fetchPapers, 100);
 
     return () => {
