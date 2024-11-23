@@ -61,7 +61,7 @@ function Dashboard() {
             <h1 className="text-4xl font-bold text-gray-900">ArXiv AI Papers</h1>
           </div>
           <p className="text-xl text-gray-600 mb-8">
-            Sign in to access the latest LLM and Diffusion Model research papers
+            Sign in to access the latest research papers on ArXiv
           </p>
           <LoginButton />
         </div>
@@ -78,7 +78,7 @@ function Dashboard() {
             <div>
               <h1 className="text-4xl font-bold text-gray-900">ArXiv AI Papers</h1>
               <p className="text-xl text-gray-600">
-                Latest LLM and Diffusion Model Research Papers
+                Track and Triage the Latest Research Papers on ArXiv
               </p>
             </div>
           </div>
