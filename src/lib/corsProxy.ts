@@ -19,7 +19,6 @@ export async function fetchWithCorsProxy(url: string, options: RequestInit = {})
   const browserType = getBrowser();
   const headers = {
     ...options.headers,
-    'User-Agent': 'Mozilla/5.0 (compatible; ArxivDigest/1.0;)',
   };
 
   // Try direct request first on mobile devices
