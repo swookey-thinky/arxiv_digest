@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { BookOpen, Loader2, List, Github } from 'lucide-react';
+import { BookOpen, Loader2, List, Github, HelpCircle } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { useArxivPapers } from './hooks/useArxivPapers';
 import { PaperCard } from './components/PaperCard';
 import { AuthProvider } from './contexts/AuthContext';
@@ -15,6 +16,7 @@ import { useArxivQueries } from './hooks/useArxivQueries';
 import { useAuth } from './contexts/AuthContext';
 import { useFilteredPapers } from './hooks/useFilteredPapers';
 import { ReadingList } from './components/ReadingList';
+import { Help } from './components/Help';
 import type { Paper } from './types';
 
 type Tab = 'papers' | 'reading-list';
@@ -220,9 +222,14 @@ function Dashboard() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Dashboard />
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/help" element={<Help />} />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
 }
 
