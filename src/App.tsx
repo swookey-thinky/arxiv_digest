@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Loader2, List } from 'lucide-react';
+import { BookOpen, Loader2, List, Github } from 'lucide-react';
 import { useArxivPapers } from './hooks/useArxivPapers';
 import { PaperCard } from './components/PaperCard';
 import { AuthProvider } from './contexts/AuthContext';
@@ -81,9 +81,20 @@ function Dashboard() {
             <BookOpen className="w-12 h-12 text-blue-600" />
             <div>
               <h1 className="text-4xl font-bold text-gray-900">ArXiv AI Papers</h1>
-              <p className="text-xl text-gray-600">
-                Track and Triage the Latest Research Papers on ArXiv
-              </p>
+              <div className="space-y-1">
+                <p className="text-xl text-gray-600">
+                  Track and Triage the Latest Research Papers on ArXiv
+                </p>
+                <a
+                  href="https://github.com/swookey-thinky/arxiv_digest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  <Github className="w-4 h-4" />
+                  View source code on GitHub
+                </a>
+              </div>
             </div>
           </div>
           <UserMenu />
@@ -148,39 +159,39 @@ function Dashboard() {
                   }}
                 />
 
-                {loading && (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                  </div>
-                )}
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            )}
 
-                {error && (
-                  <div className="text-center text-red-600 bg-red-50 p-4 rounded-lg mb-6">
-                    <p className="font-semibold">Error loading papers</p>
-                    <p className="text-sm mt-1">{error}</p>
-                  </div>
-                )}
+            {error && (
+              <div className="text-center text-red-600 bg-red-50 p-4 rounded-lg mb-6">
+                <p className="font-semibold">Error loading papers</p>
+                <p className="text-sm mt-1">{error}</p>
+              </div>
+            )}
 
-                {!loading && !error && (
-                  <div className="mb-6 text-center">
-                    <div className="inline-block bg-white px-4 py-2 rounded-full shadow-sm">
-                      <span className="font-medium text-gray-700">
-                        {filteredPapers.length === 0 ? 'No papers found' : `${filteredPapers.length} paper${filteredPapers.length === 1 ? '' : 's'} found`}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-6">
-                  {filteredPapers.map((paper) => (
-                    <PaperCard
-                      key={paper.id}
-                      paper={paper}
-                      onSelect={() => setSelectedPaper(paper)}
-                      isSelected={selectedPaper?.id === paper.id}
-                    />
-                  ))}
+            {!loading && !error && (
+              <div className="mb-6 text-center">
+                <div className="inline-block bg-white px-4 py-2 rounded-full shadow-sm">
+                  <span className="font-medium text-gray-700">
+                    {filteredPapers.length === 0 ? 'No papers found' : `${filteredPapers.length} paper${filteredPapers.length === 1 ? '' : 's'} found`}
+                  </span>
                 </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-6">
+              {filteredPapers.map((paper) => (
+                <PaperCard
+                  key={paper.id}
+                  paper={paper}
+                  onSelect={() => setSelectedPaper(paper)}
+                  isSelected={selectedPaper?.id === paper.id}
+                />
+              ))}
+            </div>
 
                 {!loading && filteredPapers.length === 0 && !error && (
                   <div className="text-center text-gray-600 bg-white p-8 rounded-lg shadow">
