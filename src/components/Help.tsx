@@ -27,6 +27,13 @@ export function Help() {
             <p className="text-gray-600 mb-4">
               Use the date picker to select a range of dates to view papers from. By default, it shows papers from the last 24 hours.
             </p>
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+              <p className="text-sm text-blue-800">
+                <strong>Note about time zones:</strong> Dates are shown in UTC (Coordinated Universal Time).
+                Depending on your local time zone, papers might appear in a different date range than expected.
+                For example, if you're in Pacific Time (UTC-7/8), papers published at 5pm UTC will show up as 10am PT on the same day.
+              </p>
+            </div>
           </section>
 
           <section className="bg-white rounded-lg shadow-sm p-6">
