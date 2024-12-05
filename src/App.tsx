@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Loader2, List, Github, HelpCircle } from 'lucide-react';
+import { BookOpen, Loader2, List, Github, HelpCircle, Tag, Search, ChevronDown } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { useArxivPapers } from './hooks/useArxivPapers';
 import { PaperCard } from './components/PaperCard';
