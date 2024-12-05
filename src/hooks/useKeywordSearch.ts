@@ -35,7 +35,7 @@ export function useKeywordSearch(keywords: string[]) {
         });
 
         const url = `${CORS_PROXY}${encodeURIComponent(`${ARXIV_API_URL}?${params}`)}`;
-        
+
         const response = await fetch(url, {
           headers: { 'Accept': 'application/xml' },
           signal: controller.signal
@@ -55,7 +55,11 @@ export function useKeywordSearch(keywords: string[]) {
         for (let i = 0; i < entries.length; i++) {
           const entry = entries[i];
           try {
-            const id = entry.getElementsByTagName('id')[0]?.textContent;
+            const idUrl = entry.getElementsByTagName('id')[0]?.textContent;
+            if (!idUrl) continue;
+
+            const rawId = idUrl.split('/').pop() || '';
+            const id = rawId.replace(/v\d+$/, '');
             if (!id) continue;
 
             const title = entry.getElementsByTagName('title')[0]?.textContent?.replace(/\n/g, ' ').trim();
@@ -66,7 +70,7 @@ export function useKeywordSearch(keywords: string[]) {
             if (!published) continue;
 
             const category = entry.getElementsByTagName('category')[0]?.getAttribute('term') || 'Unknown';
-            
+
             const authorNodes = entry.getElementsByTagName('author');
             const authors: string[] = [];
             for (let j = 0; j < authorNodes.length; j++) {
@@ -75,10 +79,10 @@ export function useKeywordSearch(keywords: string[]) {
             }
 
             const links = entry.getElementsByTagName('link');
-            let link = id;
+            let link = `https://arxiv.org/abs/${id}`;
             for (let j = 0; j < links.length; j++) {
               if (links[j].getAttribute('type') === 'text/html') {
-                link = links[j].getAttribute('href') || id;
+                link = links[j].getAttribute('href') || link;
                 break;
               }
             }

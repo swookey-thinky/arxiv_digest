@@ -50,7 +50,7 @@ export function usePaperTags(paperId: string) {
     const unsubscribe = onSnapshot(userTagsQuery, (snapshot) => {
       const uniqueTags = new Set<string>();
       const colors: Record<string, string> = {};
-      
+
       snapshot.docs.forEach(doc => {
         const data = doc.data();
         uniqueTags.add(data.name);
@@ -93,18 +93,18 @@ export function usePaperTags(paperId: string) {
 
   const addTag = async (name: string) => {
     if (!user) return;
-    
+
     try {
       const trimmedName = name.trim();
       if (!trimmedName) throw new Error('Tag name cannot be empty');
-      
+
       if (tags.some(tag => tag.name.toLowerCase() === trimmedName.toLowerCase())) {
         throw new Error('Tag already exists for this paper');
       }
-      
+
       const color = tagColors[trimmedName] || getColorForTag(trimmedName);
       const newTagRef = doc(collection(db, 'paperTags'));
-      
+
       const tagData: Omit<PaperTag, 'id'> = {
         paperId,
         userId: user.uid,
