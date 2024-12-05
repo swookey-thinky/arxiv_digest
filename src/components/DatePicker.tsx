@@ -56,31 +56,30 @@ export function DatePicker({ startDate, endDate, onDateChange }: DatePickerProps
     endUTC.setUTCHours(0, 0, 0, 0);
 
     if (startUTC.getTime() === endUTC.getTime()) {
-      return startUTC.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
+      return startUTC.toUTCString().split(' ').slice(0, 4).join(' ');
     }
 
-    return `${startUTC.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    })} - ${endUTC.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })}`;
+    const startStr = startUTC.toUTCString().split(' ').slice(1, 4).join(' ');
+    const endStr = endUTC.toUTCString().split(' ').slice(1, 4).join(' ');
+    return `${startStr} - ${endStr}`;
   };
 
   const canGoForward = () => {
     const nextDay = new Date(endDate);
     nextDay.setDate(endDate.getDate() + 1);
-    nextDay.setUTCHours(23, 59, 59, 999);
-    return nextDay <= today;
-  };
+    nextDay.setUTCHours(0, 0, 0, 0);
 
+    const maxDate = new Date(today);
+    maxDate.setDate(today.getDate() + 1);
+    maxDate.setUTCHours(0, 0, 0, 0);
+
+    // If we're already at today's papers (endDate is tomorrow at 00:00 UTC), disable the button
+    if (endDate.getTime() === maxDate.getTime()) {
+      return false;
+    }
+
+    return nextDay <= maxDate;
+  };
   const formatUTCRange = (start: Date, end: Date) => {
     const startUTC = new Date(start);
     const endUTC = new Date(end);

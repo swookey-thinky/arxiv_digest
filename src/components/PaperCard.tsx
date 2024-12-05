@@ -10,6 +10,11 @@ interface PaperCardProps {
 }
 
 export function PaperCard({ paper, onSelect, isSelected }: PaperCardProps) {
+  const formatPublishedDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toUTCString().split(' ').slice(1, 4).join(' ');
+  };
+
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't trigger if clicking the external link button or within tags
     if ((e.target as HTMLElement).closest('.external-link-btn, .paper-tags')) {
@@ -19,7 +24,7 @@ export function PaperCard({ paper, onSelect, isSelected }: PaperCardProps) {
   };
 
   return (
-    <div 
+    <div
       onClick={handleCardClick}
       className={`bg-white rounded-xl shadow-lg p-6 transition-all hover:shadow-xl cursor-pointer group relative ${
         isSelected ? 'ring-2 ring-blue-500' : ''
@@ -39,11 +44,11 @@ export function PaperCard({ paper, onSelect, isSelected }: PaperCardProps) {
           <ExternalLink className="w-5 h-5" />
         </a>
       </div>
-      
+
       <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
         <div className="flex items-center gap-1">
           <BookOpen className="w-4 h-4" />
-          <span>{new Date(paper.published).toLocaleDateString()}</span>
+          <span>{formatPublishedDate(paper.published)}</span>
         </div>
         <div className="flex items-center gap-1">
           <Tag className="w-4 h-4" />

@@ -9,6 +9,11 @@ interface PaperSidebarProps {
 }
 
 export function PaperSidebar({ paper, onClose }: PaperSidebarProps) {
+  const formatPublishedDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toUTCString().split(' ').slice(1, 4).join(' ');
+  };
+
   if (!paper) return null;
 
   return (
@@ -39,7 +44,7 @@ export function PaperSidebar({ paper, onClose }: PaperSidebarProps) {
         <div className="flex items-center gap-4 text-sm text-gray-600">
           <div className="flex items-center gap-1">
             <BookOpen className="w-4 h-4" />
-            <span>{new Date(paper.published).toLocaleDateString()}</span>
+            <span>{formatPublishedDate(paper.published)}</span>
           </div>
           <div className="flex items-center gap-1">
             <Tag className="w-4 h-4" />
