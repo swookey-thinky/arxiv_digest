@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Tag, Search, List, Calendar, ArrowLeft } from 'lucide-react';
+import { BookOpen, Tag, Search, List, Calendar, ArrowLeft, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function Help() {
@@ -79,6 +79,41 @@ export function Help() {
               <li>Add papers to your reading list by using the "Reading List" tag</li>
               <li>Access your reading list by clicking the "Reading List" tab at the top</li>
               <li>Papers in your reading list persist across sessions</li>
+            </ul>
+          </section>
+
+          <section className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <MessageCircle className="w-6 h-6 text-blue-600" />
+              <h2 className="text-2xl font-semibold text-gray-800">Contact Us</h2>
+            </div>
+            <p className="text-gray-600 mb-4">
+              We welcome your feedback and suggestions:
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+              <li>
+                Submit feature requests and bug reports on our{' '}
+                <a
+                  href="https://github.com/swookey-thinky/arxiv_digest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  GitHub page
+                </a>
+              </li>
+              <li>
+                Direct message{' '}
+                <a
+                  href="https://twitter.com/samuelwookey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  @samuelwookey
+                </a>
+                {' '}on Twitter
+              </li>
             </ul>
           </section>
         </div>
