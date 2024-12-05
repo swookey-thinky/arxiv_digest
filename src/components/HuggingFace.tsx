@@ -5,7 +5,12 @@ import { useHuggingFacePapers } from '../hooks/useHuggingFacePapers';
 import { SingleDatePicker } from './SingleDatePicker';
 import type { Paper } from '../types';
 
-export function HuggingFace() {
+interface HuggingFaceProps {
+  onPaperSelect: (paper: Paper) => void;
+  selectedPaperId?: string;
+}
+
+export function HuggingFace({ onPaperSelect, selectedPaperId }: HuggingFaceProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { papers, loading, error } = useHuggingFacePapers(selectedDate);
 
@@ -61,8 +66,8 @@ export function HuggingFace() {
                 <PaperCard
                   key={paper.id}
                   paper={paper}
-                  onSelect={() => {}}
-                  isSelected={false}
+                  onSelect={() => onPaperSelect(paper)}
+                  isSelected={paper.id === selectedPaperId}
                 />
               ))}
             </div>

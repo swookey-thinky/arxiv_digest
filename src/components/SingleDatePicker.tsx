@@ -32,13 +32,15 @@ export function SingleDatePicker({ selectedDate, onChange }: SingleDatePickerPro
       >
         <ChevronLeft className="w-5 h-5 text-gray-600" />
       </button>
-      <DatePicker
-        selected={selectedDate}
-        onChange={onChange}
-        dateFormat="yyyy-MM-dd"
-        className="bg-transparent focus:outline-none text-gray-700"
-        maxDate={new Date()}
-      />
+      <div className="w-28 text-center">
+        <DatePicker
+          selected={selectedDate}
+          onChange={onChange}
+          dateFormat="yyyy-MM-dd"
+          className="bg-transparent focus:outline-none text-gray-700 text-center w-full"
+          maxDate={new Date()}
+        />
+      </div>
       <button
         onClick={handleNextDay}
         className="p-1 hover:bg-gray-200 rounded-full transition-colors"

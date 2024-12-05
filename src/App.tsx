@@ -230,7 +230,10 @@ function Dashboard() {
                 selectedPaperId={selectedPaper?.id}
               />
             ) : currentTab === 'hugging-face' ? (
-              <HuggingFace />
+              <HuggingFace
+                onPaperSelect={setSelectedPaper}
+                selectedPaperId={selectedPaper?.id}
+              />
             ) : null}
           </div>
         </div>
