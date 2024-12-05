@@ -89,7 +89,7 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
         const startStr = startDate.toISOString().split('T')[0].replace(/-/g, '');
         const endStr = endDate.toISOString().split('T')[0].replace(/-/g, '');
 
-        const searchQuery = `${query} AND submittedDate:[${startStr}0000 TO ${endStr}2359]`;
+        const searchQuery = `${query} AND submittedDate:[${startStr}0000 TO ${endStr}0000]`;
 
         const params = new URLSearchParams({
           search_query: searchQuery,
