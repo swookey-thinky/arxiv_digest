@@ -7,20 +7,17 @@ const ARXIV_API_URL = 'https://export.arxiv.org/api/query';
 function parseArxivXML(xmlString: string, startDate: Date, endDate: Date): Paper[] {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlString, 'application/xml');
-  
+
   const parseError = xmlDoc.querySelector('parsererror');
   if (parseError) {
     throw new Error('Failed to parse ArXiv API response');
   }
-  
+
   const entries = xmlDoc.getElementsByTagName('entry');
   const papers: Paper[] = [];
 
   const start = new Date(startDate);
-  start.setUTCHours(0, 0, 0, 0);
-  
   const end = new Date(endDate);
-  end.setUTCHours(23, 59, 59, 999);
 
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
@@ -36,7 +33,7 @@ function parseArxivXML(xmlString: string, startDate: Date, endDate: Date): Paper
       if (!published) continue;
 
       const category = entry.getElementsByTagName('category')[0]?.getAttribute('term') || 'Unknown';
-      
+
       const authorNodes = entry.getElementsByTagName('author');
       const authors: string[] = [];
       for (let j = 0; j < authorNodes.length; j++) {
@@ -55,7 +52,7 @@ function parseArxivXML(xmlString: string, startDate: Date, endDate: Date): Paper
 
       const publishedDate = new Date(published);
       publishedDate.setUTCHours(0, 0, 0, 0);
-      
+
       if (publishedDate >= start && publishedDate <= end) {
         papers.push({
           id,
@@ -93,7 +90,7 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
         const endStr = endDate.toISOString().split('T')[0].replace(/-/g, '');
 
         const searchQuery = `${query} AND submittedDate:[${startStr}0000 TO ${endStr}2359]`;
-        
+
         const params = new URLSearchParams({
           search_query: searchQuery,
           start: '0',
@@ -103,14 +100,14 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
         });
 
         const arxivUrl = `${ARXIV_API_URL}?${params}`;
-        
+
         const response = await fetchWithCorsProxy(arxivUrl, {
           headers: {
             'Accept': 'application/xml'
           },
           signal: controller.signal
         });
-        
+
         const xmlData = await response.text();
 
         if (!xmlData || xmlData.trim() === '') {
@@ -130,8 +127,8 @@ export function useArxivPapers(startDate: Date, endDate: Date, query: string) {
         }
         console.error('ArXiv API Error:', err);
         setError(
-          err instanceof Error 
-            ? `Failed to fetch papers: ${err.message}` 
+          err instanceof Error
+            ? `Failed to fetch papers: ${err.message}`
             : 'Failed to fetch papers from arXiv'
         );
         setPapers([]);
