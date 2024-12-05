@@ -61,14 +61,24 @@ function Dashboard() {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
-        <div className="text-center">
+        <div className="text-center max-w-xl mx-auto px-4">
           <div className="flex items-center justify-center gap-3 mb-6">
             <BookOpen className="w-12 h-12 text-blue-600" />
             <h1 className="text-4xl font-bold text-gray-900">ArXiv AI Papers</h1>
           </div>
           <p className="text-xl text-gray-600 mb-8">
-            Sign in to access the latest research papers from ArXiv
+            Sign in to track and triage the latest research papers from ArXiv
           </p>
+          <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
+            <p className="text-sm text-gray-600 mb-4">
+              <strong className="text-gray-800">Note about signing in:</strong> An account is only needed to save tags,
+              create reading lists, and store custom search queries.
+            </p>
+            <p className="text-sm text-gray-600">
+              <strong className="text-gray-800">Privacy commitment:</strong> We will never sell your information
+              or use your email address to contact you.
+            </p>
+          </div>
           <LoginButton />
         </div>
       </div>
