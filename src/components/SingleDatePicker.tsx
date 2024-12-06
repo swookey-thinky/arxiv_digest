@@ -23,6 +23,10 @@ export function SingleDatePicker({ selectedDate, onChange }: SingleDatePickerPro
     }
   };
 
+  // Convert to GMT for display
+  const gmtDate = new Date(selectedDate);
+  gmtDate.setMinutes(gmtDate.getMinutes() + gmtDate.getTimezoneOffset());
+
   return (
     <div className="flex items-center gap-2">
       <button
@@ -34,7 +38,7 @@ export function SingleDatePicker({ selectedDate, onChange }: SingleDatePickerPro
       </button>
       <div className="w-28 text-center">
         <DatePicker
-          selected={selectedDate}
+          selected={gmtDate}
           onChange={onChange}
           dateFormat="yyyy-MM-dd"
           className="bg-transparent focus:outline-none text-gray-700 text-center w-full"
