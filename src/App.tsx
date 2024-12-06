@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Loader2, List, Github, HelpCircle, Tag, Search, ChevronDown, Sparkles } from 'lucide-react';
+import { BookOpen, Loader2, List, Github, HelpCircle, Tag, Search, ChevronDown, Sparkles, Newspaper } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { useArxivPapers } from './hooks/useArxivPapers';
 import { PaperCard } from './components/PaperCard';
@@ -18,9 +18,10 @@ import { useFilteredPapers } from './hooks/useFilteredPapers';
 import { ReadingList } from './components/ReadingList';
 import { Help } from './components/Help';
 import { HuggingFace } from './components/HuggingFace';
+import { Digest } from './components/Digest';
 import type { Paper } from './types';
 
-type Tab = 'papers' | 'reading-list' | 'hugging-face';
+type Tab = 'papers' | 'reading-list' | 'hugging-face' | 'digest';
 
 function Dashboard() {
   const { user } = useAuth();
@@ -147,6 +148,17 @@ function Dashboard() {
             <Sparkles className="w-5 h-5" />
             Hugging Face
           </button>
+          <button
+            onClick={() => setCurrentTab('digest')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              currentTab === 'digest'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:bg-white/50'
+            }`}
+          >
+            <Newspaper className="w-5 h-5" />
+            Digest
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -231,6 +243,11 @@ function Dashboard() {
               />
             ) : currentTab === 'hugging-face' ? (
               <HuggingFace
+                onPaperSelect={setSelectedPaper}
+                selectedPaperId={selectedPaper?.id}
+              />
+            ) : currentTab === 'digest' ? (
+              <Digest
                 onPaperSelect={setSelectedPaper}
                 selectedPaperId={selectedPaper?.id}
               />
