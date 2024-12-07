@@ -40,85 +40,64 @@ export function useHuggingFacePapers(date: Date) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        const uniquePaperUrls = new Set<string>();
+        const uniqueArxivIds = new Set<string>();
         const paperLinks = Array.from(doc.querySelectorAll('a[href^="/papers/"]'))
-          .map(link => ({
-            title: link.textContent?.trim() || '',
-            url: `https://huggingface.co${link.getAttribute('href')}`,
-            arxivUrl: ''
-          }))
+          .map(link => {
+            const href = link.getAttribute('href') || '';
+            const arxivId = href.split('/').pop()?.split('#')[0] || '';
+            return {
+              title: link.textContent?.trim() || '',
+              arxivId,
+              arxivUrl: `https://arxiv.org/abs/${arxivId}`
+            };
+          })
           .filter(paper => {
-            if (uniquePaperUrls.has(paper.url)) {
+            if (!paper.arxivId || uniqueArxivIds.has(paper.arxivId)) {
               return false;
             }
-            uniquePaperUrls.add(paper.url);
+            uniqueArxivIds.add(paper.arxivId);
             return true;
           });
 
-        const papersWithArxiv = await Promise.all(
+        const formattedPapers = await Promise.all(
           paperLinks.map(async (paper) => {
-            const paperResponse = await fetchWithRetry(paper.url);
-            const paperHtml = await paperResponse.text();
-            const paperDoc = parser.parseFromString(paperHtml, 'text/html');
+            try {
+              const params = new URLSearchParams({
+                id_list: paper.arxivId,
+              });
 
-            const arxivLink = paperDoc.querySelector('a[href^="https://arxiv.org/abs/"]');
-            return {
-              ...paper,
-              arxivUrl: arxivLink?.getAttribute('href') || ''
-            };
+              const arxivUrl = `${ARXIV_API_URL}?${params}`;
+              const response = await fetchWithRetry(arxivUrl, {
+                headers: {
+                  'Accept': 'application/xml'
+                }
+              });
+
+              const xmlText = await response.text();
+              const parser = new DOMParser();
+              const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+              const entry = xmlDoc.querySelector('entry');
+
+              if (!entry) return null;
+
+              return {
+                id: paper.arxivId,
+                title: entry.querySelector('title')?.textContent?.replace(/\n/g, ' ').trim() || '',
+                authors: Array.from(entry.querySelectorAll('author name'))
+                  .map(name => name.textContent || ''),
+                summary: entry.querySelector('summary')?.textContent?.replace(/\n/g, ' ').trim() || '',
+                published: entry.querySelector('published')?.textContent || '',
+                category: entry.querySelector('category')?.getAttribute('term') || 'Unknown',
+                link: paper.arxivUrl
+              };
+            } catch (error) {
+              console.error('Error fetching paper:', error);
+              return null;
+            }
           })
         );
 
-        const uniqueArxivIds = new Set<string>();
-        const formattedPapers = await Promise.all(
-          papersWithArxiv
-            .filter(paper => {
-              const arxivId = paper.arxivUrl.split('/').pop();
-              if (!arxivId || uniqueArxivIds.has(arxivId)) {
-                return false;
-              }
-              uniqueArxivIds.add(arxivId);
-              return true;
-            })
-            .map(async (paper) => {
-              try {
-                const arxivId = paper.arxivUrl.split('/').pop();
-                const params = new URLSearchParams({
-                  id_list: arxivId || '',
-                });
-
-                const arxivUrl = `${ARXIV_API_URL}?${params}`;
-                const response = await fetchWithRetry(arxivUrl, {
-                  headers: {
-                    'Accept': 'application/xml'
-                  }
-                });
-
-                const xmlText = await response.text();
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
-                const entry = xmlDoc.querySelector('entry');
-
-                if (!entry) return null;
-
-                return {
-                  id: arxivId || '',
-                  title: entry.querySelector('title')?.textContent?.replace(/\n/g, ' ').trim() || '',
-                  authors: Array.from(entry.querySelectorAll('author name'))
-                    .map(name => name.textContent || ''),
-                  summary: entry.querySelector('summary')?.textContent?.replace(/\n/g, ' ').trim() || '',
-                  published: entry.querySelector('published')?.textContent || '',
-                  category: entry.querySelector('category')?.getAttribute('term') || 'Unknown',
-                  link: entry.querySelector('link[type="text/html"]')?.getAttribute('href') || paper.arxivUrl
-                };
-              } catch (error) {
-                console.error('Error fetching paper:', error);
-                return null;
-              }
-            })
-        );
-
-        setPapers(formattedPapers.filter((p): p is Paper => p !== null));
+        setPapers(formattedPapers.filter((paper): paper is Paper => paper !== null));
       } catch (error) {
         console.error('Error fetching papers:', error);
         setError('Failed to fetch papers. Please try again later.');
