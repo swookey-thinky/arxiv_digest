@@ -3,6 +3,25 @@ import { fetchWithCorsProxy } from '../lib/corsProxy';
 import type { Paper } from '../types';
 
 const ARXIV_API_URL = 'https://export.arxiv.org/api/query';
+const MAX_RETRIES = 3;
+const INITIAL_DELAY = 1000; // 1 second
+
+async function fetchWithRetry(url: string, options?: RequestInit, retries = MAX_RETRIES, delay = INITIAL_DELAY): Promise<Response> {
+  try {
+    const response = await fetchWithCorsProxy(url, options);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response;
+  } catch (error) {
+    if (retries > 0) {
+      console.log(`Retrying fetch (${MAX_RETRIES - retries + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return fetchWithRetry(url, options, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
 
 export function useHuggingFacePapers(date: Date) {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -16,7 +35,7 @@ export function useHuggingFacePapers(date: Date) {
         setError(null);
 
         const dateStr = date.toISOString().split('T')[0];
-        const response = await fetchWithCorsProxy(`https://huggingface.co/papers?date=${dateStr}`);
+        const response = await fetchWithRetry(`https://huggingface.co/papers?date=${dateStr}`);
         const html = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -38,7 +57,7 @@ export function useHuggingFacePapers(date: Date) {
 
         const papersWithArxiv = await Promise.all(
           paperLinks.map(async (paper) => {
-            const paperResponse = await fetchWithCorsProxy(paper.url);
+            const paperResponse = await fetchWithRetry(paper.url);
             const paperHtml = await paperResponse.text();
             const paperDoc = parser.parseFromString(paperHtml, 'text/html');
 
@@ -69,7 +88,7 @@ export function useHuggingFacePapers(date: Date) {
                 });
 
                 const arxivUrl = `${ARXIV_API_URL}?${params}`;
-                const response = await fetchWithCorsProxy(arxivUrl, {
+                const response = await fetchWithRetry(arxivUrl, {
                   headers: {
                     'Accept': 'application/xml'
                   }
@@ -100,9 +119,10 @@ export function useHuggingFacePapers(date: Date) {
         );
 
         setPapers(formattedPapers.filter((p): p is Paper => p !== null));
-        setLoading(false);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch papers');
+      } catch (error) {
+        console.error('Error fetching papers:', error);
+        setError('Failed to fetch papers. Please try again later.');
+      } finally {
         setLoading(false);
       }
     }
