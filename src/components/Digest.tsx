@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { TopicPicker } from './TopicPicker';
 import { MessageSquare, Save, Loader2, X, Trash2 } from 'lucide-react';
-import { collection, query, where, getDocs, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Paper } from '../types';
+import { fetchWithCorsProxy } from '../lib/corsProxy';
+import { PaperCard } from './PaperCard';
+
+const ARXIV_API_URL = 'https://export.arxiv.org/api/query';
 
 interface SavedDigest {
   id: string;
@@ -29,6 +33,7 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
   const [digestName, setDigestName] = useState('');
   const [savedDigests, setSavedDigests] = useState<SavedDigest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [digestResults, setDigestResults] = useState<Record<string, Paper[]>>({});
 
   useEffect(() => {
     if (!user) {
@@ -54,6 +59,77 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
 
     return () => unsubscribe();
   }, [user]);
+
+  useEffect(() => {
+    if (!user || savedDigests.length === 0) return;
+
+    const fetchDigestResults = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const results: Record<string, Paper[]> = {};
+
+      for (const digest of savedDigests) {
+        try {
+          const digestResultsRef = collection(
+            db,
+            'daily_digest_results',
+            user.uid,
+            today,
+            digest.name,
+            'results'
+          );
+
+          const snapshot = await getDocs(digestResultsRef);
+          const paperPromises = snapshot.docs.map(async (doc) => {
+            const { arxiv_id, reason, relevancy_score } = doc.data();
+
+            const params = new URLSearchParams({
+              id_list: arxiv_id,
+            });
+
+            const arxivUrl = `${ARXIV_API_URL}?${params}`;
+            console.log('Fetching paper from:', arxivUrl);
+
+            const response = await fetchWithCorsProxy(arxivUrl, {
+              headers: {
+                'Accept': 'application/xml'
+              }
+            });
+
+            const xmlText = await response.text();
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+            const entry = xmlDoc.querySelector('entry');
+
+            if (!entry) return null;
+
+            return {
+              id: arxiv_id,
+              title: entry.querySelector('title')?.textContent?.replace(/\n/g, ' ').trim() || '',
+              authors: Array.from(entry.querySelectorAll('author name'))
+                .map(name => name.textContent || ''),
+              summary: entry.querySelector('summary')?.textContent?.replace(/\n/g, ' ').trim() || '',
+              published: entry.querySelector('published')?.textContent || '',
+              category: entry.querySelector('category')?.getAttribute('term') || 'Unknown',
+              link: entry.querySelector('link[type="text/html"]')?.getAttribute('href') || arxiv_id,
+              reason,
+              relevancy_score
+            };
+          });
+
+          const papers = (await Promise.all(paperPromises)).filter((p): p is Paper => p !== null);
+          papers.sort((a, b) => (b as any).relevancy_score - (a as any).relevancy_score);
+          results[digest.name] = papers;
+        } catch (error) {
+          console.error(`Error fetching results for digest ${digest.name}:`, error);
+          results[digest.name] = [];
+        }
+      }
+
+      setDigestResults(results);
+    };
+
+    fetchDigestResults();
+  }, [user, savedDigests]);
 
   const handleDeleteDigest = async (digestId: string) => {
     if (!user) return;
@@ -201,7 +277,7 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
           </div>
 
           <div className="lg:col-span-3">
-            <div className="space-y-6">
+            <section className="space-y-6 mb-12">
               <h2 className="text-2xl font-semibold text-gray-900">Your Saved Digests</h2>
 
               {isLoading ? (
@@ -226,7 +302,7 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-4">
                         <div className="flex flex-wrap gap-2">
                           {digest.topics.split(',').map((topic) => (
                             <span
@@ -243,7 +319,36 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
                   ))}
                 </div>
               )}
-            </div>
+            </section>
+
+            <section className="space-y-6">
+              <h2 className="text-2xl font-semibold text-gray-900">Today's Papers</h2>
+              {savedDigests.map((digest) => (
+                <div key={digest.id} className="bg-white rounded-lg shadow-sm p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">{digest.name}</h3>
+                  {digestResults[digest.name]?.length > 0 ? (
+                    <div className="space-y-4">
+                      {digestResults[digest.name].map((paper) => (
+                        <div key={paper.id} className="space-y-2">
+                          <PaperCard
+                            key={paper.id}
+                            paper={paper}
+                            onSelect={() => onPaperSelect(paper)}
+                            isSelected={paper.id === selectedPaperId}
+                          />
+                          <div className="ml-4 text-sm text-gray-600">
+                            <span className="font-medium">Why it's relevant: </span>
+                            {(paper as any).reason}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-600 text-sm">No papers found for today</p>
+                  )}
+                </div>
+              ))}
+            </section>
           </div>
         </div>
       </div>
