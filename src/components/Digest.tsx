@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { TopicPicker } from './TopicPicker';
-import { MessageSquare, Save, Loader2, X, Trash2, Pencil } from 'lucide-react';
+import { MessageSquare, Save, Loader2, X, Trash2, Pencil, Calendar, ChevronRight } from 'lucide-react';
 import { collection, query, where, getDocs, deleteDoc, doc, onSnapshot, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Paper } from '../types';
 import { fetchWithCorsProxy } from '../lib/corsProxy';
 import { PaperCard } from './PaperCard';
+import { SingleDatePicker } from './SingleDatePicker';
 
 const ARXIV_API_URL = 'https://export.arxiv.org/api/query';
 
@@ -39,6 +40,8 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
   const [editedDescription, setEditedDescription] = useState('');
   const [editedName, setEditedName] = useState('');
   const [isLoadingPapers, setIsLoadingPapers] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [expandedDigests, setExpandedDigests] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user) {
@@ -65,12 +68,13 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
     return () => unsubscribe();
   }, [user]);
 
+
   useEffect(() => {
     if (!user || savedDigests.length === 0) return;
 
     const fetchDigestResults = async () => {
       setIsLoadingPapers(true);
-      const today = new Date().toISOString().split('T')[0];
+      const formattedDate = selectedDate.toISOString().split('T')[0];
       const results: Record<string, Paper[]> = {};
 
       try {
@@ -80,7 +84,7 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
               db,
               'daily_digest_results',
               user.uid,
-              today,
+              formattedDate,
               digest.name,
               'results'
             );
@@ -141,7 +145,7 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
     };
 
     fetchDigestResults();
-  }, [user, savedDigests]);
+  }, [user, savedDigests, selectedDate]);
 
   const handleDeleteDigest = async (digestId: string) => {
     if (!user) return;
@@ -228,6 +232,13 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
       console.error('Error updating digest:', error);
       setError('Failed to update digest. Please try again.');
     }
+  };
+
+  const toggleDigestExpansion = (digestId: string) => {
+    setExpandedDigests(prev => ({
+      ...prev,
+      [digestId]: !prev[digestId]
+    }));
   };
 
   return (
@@ -409,7 +420,17 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
             </section>
 
             <section className="space-y-6">
-              <h2 className="text-2xl font-semibold text-gray-900">Today's Papers</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-semibold text-gray-900">Papers for {selectedDate.toLocaleDateString()}</h2>
+                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  <SingleDatePicker
+                    selectedDate={selectedDate}
+                    onChange={setSelectedDate}
+                  />
+                </div>
+              </div>
+
               {isLoadingPapers ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
@@ -417,33 +438,46 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
               ) : (
                 savedDigests.map((digest) => (
                   <div key={digest.id} className="bg-white rounded-lg shadow-sm p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium text-gray-900">{digest.name}</h3>
+                    <div
+                      className="flex items-center justify-between mb-4 cursor-pointer"
+                      onClick={() => toggleDigestExpansion(digest.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <ChevronRight
+                          className={`w-5 h-5 text-gray-500 transition-transform ${
+                            expandedDigests[digest.id] ? 'transform rotate-90' : ''
+                          }`}
+                        />
+                        <h3 className="text-lg font-medium text-gray-900">{digest.name}</h3>
+                      </div>
                       <div className="inline-block bg-gray-50 px-3 py-1 rounded-full">
                         <span className="text-sm font-medium text-gray-700">
                           {digestResults[digest.name]?.length || 0} paper{(digestResults[digest.name]?.length || 0) === 1 ? '' : 's'}
                         </span>
                       </div>
                     </div>
-                    {digestResults[digest.name]?.length > 0 ? (
-                      <div className="space-y-4">
-                        {digestResults[digest.name].map((paper) => (
-                          <div key={paper.id} className="space-y-2">
-                            <PaperCard
-                              key={paper.id}
-                              paper={paper}
-                              onSelect={() => onPaperSelect(paper)}
-                              isSelected={paper.id === selectedPaperId}
-                            />
-                            <div className="ml-4 text-sm text-gray-600">
-                              <span className="font-medium">Why it's relevant: </span>
-                              {(paper as any).reason}
-                            </div>
+                    {expandedDigests[digest.id] && (
+                      <>
+                        {digestResults[digest.name]?.length > 0 ? (
+                          <div className="space-y-4">
+                            {digestResults[digest.name].map((paper) => (
+                              <div key={paper.id} className="space-y-2">
+                                <PaperCard
+                                  paper={paper}
+                                  onSelect={() => onPaperSelect(paper)}
+                                  isSelected={paper.id === selectedPaperId}
+                                />
+                                <div className="ml-4 text-sm text-gray-600">
+                                  <span className="font-medium">Why it's relevant: </span>
+                                  {(paper as any).reason}
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-600 text-sm">No papers found for today</p>
+                        ) : (
+                          <p className="text-gray-600 text-sm">No papers found for today</p>
+                        )}
+                      </>
                     )}
                   </div>
                 ))
