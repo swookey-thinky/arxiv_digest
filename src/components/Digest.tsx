@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TopicPicker } from './TopicPicker';
-import { MessageSquare, Save, Loader2, X, Trash2 } from 'lucide-react';
-import { collection, query, where, getDocs, deleteDoc, doc, onSnapshot, addDoc } from 'firebase/firestore';
+import { MessageSquare, Save, Loader2, X, Trash2, Pencil } from 'lucide-react';
+import { collection, query, where, getDocs, deleteDoc, doc, onSnapshot, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Paper } from '../types';
@@ -34,6 +34,11 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
   const [savedDigests, setSavedDigests] = useState<SavedDigest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [digestResults, setDigestResults] = useState<Record<string, Paper[]>>({});
+  const [editingDigest, setEditingDigest] = useState<SavedDigest | null>(null);
+  const [editedTopics, setEditedTopics] = useState<string[]>([]);
+  const [editedDescription, setEditedDescription] = useState('');
+  const [editedName, setEditedName] = useState('');
+  const [isLoadingPapers, setIsLoadingPapers] = useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -64,68 +69,75 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
     if (!user || savedDigests.length === 0) return;
 
     const fetchDigestResults = async () => {
+      setIsLoadingPapers(true);
       const today = new Date().toISOString().split('T')[0];
       const results: Record<string, Paper[]> = {};
 
-      for (const digest of savedDigests) {
-        try {
-          const digestResultsRef = collection(
-            db,
-            'daily_digest_results',
-            user.uid,
-            today,
-            digest.name,
-            'results'
-          );
+      try {
+        for (const digest of savedDigests) {
+          try {
+            const digestResultsRef = collection(
+              db,
+              'daily_digest_results',
+              user.uid,
+              today,
+              digest.name,
+              'results'
+            );
 
-          const snapshot = await getDocs(digestResultsRef);
-          const paperPromises = snapshot.docs.map(async (doc) => {
-            const { arxiv_id, reason, relevancy_score } = doc.data();
+            const snapshot = await getDocs(digestResultsRef);
+            const paperPromises = snapshot.docs.map(async (doc) => {
+              const { arxiv_id, reason, relevancy_score } = doc.data();
 
-            const params = new URLSearchParams({
-              id_list: arxiv_id,
+              const params = new URLSearchParams({
+                id_list: arxiv_id,
+              });
+
+              const arxivUrl = `${ARXIV_API_URL}?${params}`;
+              console.log('Fetching paper from:', arxivUrl);
+
+              const response = await fetchWithCorsProxy(arxivUrl, {
+                headers: {
+                  'Accept': 'application/xml'
+                }
+              });
+
+              const xmlText = await response.text();
+              const parser = new DOMParser();
+              const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+              const entry = xmlDoc.querySelector('entry');
+
+              if (!entry) return null;
+
+              return {
+                id: arxiv_id,
+                title: entry.querySelector('title')?.textContent?.replace(/\n/g, ' ').trim() || '',
+                authors: Array.from(entry.querySelectorAll('author name'))
+                  .map(name => name.textContent || ''),
+                summary: entry.querySelector('summary')?.textContent?.replace(/\n/g, ' ').trim() || '',
+                published: entry.querySelector('published')?.textContent || '',
+                category: entry.querySelector('category')?.getAttribute('term') || 'Unknown',
+                link: entry.querySelector('link[type="text/html"]')?.getAttribute('href') || arxiv_id,
+                reason,
+                relevancy_score
+              };
             });
 
-            const arxivUrl = `${ARXIV_API_URL}?${params}`;
-            console.log('Fetching paper from:', arxivUrl);
-
-            const response = await fetchWithCorsProxy(arxivUrl, {
-              headers: {
-                'Accept': 'application/xml'
-              }
-            });
-
-            const xmlText = await response.text();
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
-            const entry = xmlDoc.querySelector('entry');
-
-            if (!entry) return null;
-
-            return {
-              id: arxiv_id,
-              title: entry.querySelector('title')?.textContent?.replace(/\n/g, ' ').trim() || '',
-              authors: Array.from(entry.querySelectorAll('author name'))
-                .map(name => name.textContent || ''),
-              summary: entry.querySelector('summary')?.textContent?.replace(/\n/g, ' ').trim() || '',
-              published: entry.querySelector('published')?.textContent || '',
-              category: entry.querySelector('category')?.getAttribute('term') || 'Unknown',
-              link: entry.querySelector('link[type="text/html"]')?.getAttribute('href') || arxiv_id,
-              reason,
-              relevancy_score
-            };
-          });
-
-          const papers = (await Promise.all(paperPromises)).filter((p): p is Paper => p !== null);
-          papers.sort((a, b) => (b as any).relevancy_score - (a as any).relevancy_score);
-          results[digest.name] = papers;
-        } catch (error) {
-          console.error(`Error fetching results for digest ${digest.name}:`, error);
-          results[digest.name] = [];
+            const papers = (await Promise.all(paperPromises)).filter((p): p is Paper => p !== null);
+            papers.sort((a, b) => (b as any).relevancy_score - (a as any).relevancy_score);
+            results[digest.name] = papers;
+          } catch (error) {
+            console.error(`Error fetching results for digest ${digest.name}:`, error);
+            results[digest.name] = [];
+          }
         }
+        setDigestResults(results);
+      } catch (error) {
+        console.error('Error fetching digest results:', error);
+        setError('Failed to fetch papers. Please try again.');
+      } finally {
+        setIsLoadingPapers(false);
       }
-
-      setDigestResults(results);
     };
 
     fetchDigestResults();
@@ -185,6 +197,37 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
     setIsNaming(false);
     setDigestName('');
     setError(null);
+  };
+
+  const handleEditDigest = (digest: SavedDigest) => {
+    setEditingDigest(digest);
+    setEditedTopics(digest.topics.split(','));
+    setEditedDescription(digest.description);
+    setEditedName(digest.name);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDigest(null);
+    setEditedTopics([]);
+    setEditedDescription('');
+    setEditedName('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!user || !editingDigest) return;
+
+    try {
+      const digestRef = doc(db, 'digests', editingDigest.id);
+      await updateDoc(digestRef, {
+        name: editedName.trim(),
+        topics: editedTopics.join(','),
+        description: editedDescription,
+      });
+      handleCancelEdit();
+    } catch (error) {
+      console.error('Error updating digest:', error);
+      setError('Failed to update digest. Please try again.');
+    }
   };
 
   return (
@@ -293,28 +336,72 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
                 <div className="grid grid-cols-1 gap-4">
                   {savedDigests.map((digest) => (
                     <div key={digest.id} className="bg-white rounded-lg shadow-sm p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-medium text-gray-900">{digest.name}</h3>
-                        <button
-                          onClick={() => handleDeleteDigest(digest.id)}
-                          className="text-gray-400 hover:text-red-600 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="flex flex-wrap gap-2">
-                          {digest.topics.split(',').map((topic) => (
-                            <span
-                              key={topic}
-                              className="px-2 py-1 text-sm bg-blue-50 text-blue-700 rounded-full"
+                      {editingDigest?.id === digest.id ? (
+                        <div className="space-y-4">
+                          <input
+                            type="text"
+                            value={editedName}
+                            onChange={(e) => setEditedName(e.target.value)}
+                            className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <TopicPicker
+                            selectedTopics={editedTopics}
+                            onTopicsChange={setEditedTopics}
+                          />
+                          <textarea
+                            value={editedDescription}
+                            onChange={(e) => setEditedDescription(e.target.value)}
+                            className="w-full h-32 px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={handleCancelEdit}
+                              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
                             >
-                              {topic}
-                            </span>
-                          ))}
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSaveEdit}
+                              className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                            >
+                              Save Changes
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-gray-600 whitespace-pre-wrap">{digest.description}</p>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-medium text-gray-900">{digest.name}</h3>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEditDigest(digest)}
+                                className="text-gray-400 hover:text-blue-600 transition-colors"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteDigest(digest.id)}
+                                className="text-gray-400 hover:text-red-600 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="flex flex-wrap gap-2">
+                              {digest.topics.split(',').map((topic) => (
+                                <span
+                                  key={topic}
+                                  className="px-2 py-1 text-sm bg-blue-50 text-blue-700 rounded-full"
+                                >
+                                  {topic}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-gray-600 whitespace-pre-wrap">{digest.description}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -323,31 +410,44 @@ export function Digest({ onPaperSelect, selectedPaperId }: DigestProps) {
 
             <section className="space-y-6">
               <h2 className="text-2xl font-semibold text-gray-900">Today's Papers</h2>
-              {savedDigests.map((digest) => (
-                <div key={digest.id} className="bg-white rounded-lg shadow-sm p-4">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">{digest.name}</h3>
-                  {digestResults[digest.name]?.length > 0 ? (
-                    <div className="space-y-4">
-                      {digestResults[digest.name].map((paper) => (
-                        <div key={paper.id} className="space-y-2">
-                          <PaperCard
-                            key={paper.id}
-                            paper={paper}
-                            onSelect={() => onPaperSelect(paper)}
-                            isSelected={paper.id === selectedPaperId}
-                          />
-                          <div className="ml-4 text-sm text-gray-600">
-                            <span className="font-medium">Why it's relevant: </span>
-                            {(paper as any).reason}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-600 text-sm">No papers found for today</p>
-                  )}
+              {isLoadingPapers ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                 </div>
-              ))}
+              ) : (
+                savedDigests.map((digest) => (
+                  <div key={digest.id} className="bg-white rounded-lg shadow-sm p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">{digest.name}</h3>
+                      <div className="inline-block bg-gray-50 px-3 py-1 rounded-full">
+                        <span className="text-sm font-medium text-gray-700">
+                          {digestResults[digest.name]?.length || 0} paper{(digestResults[digest.name]?.length || 0) === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                    </div>
+                    {digestResults[digest.name]?.length > 0 ? (
+                      <div className="space-y-4">
+                        {digestResults[digest.name].map((paper) => (
+                          <div key={paper.id} className="space-y-2">
+                            <PaperCard
+                              key={paper.id}
+                              paper={paper}
+                              onSelect={() => onPaperSelect(paper)}
+                              isSelected={paper.id === selectedPaperId}
+                            />
+                            <div className="ml-4 text-sm text-gray-600">
+                              <span className="font-medium">Why it's relevant: </span>
+                              {(paper as any).reason}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 text-sm">No papers found for today</p>
+                    )}
+                  </div>
+                ))
+              )}
             </section>
           </div>
         </div>
