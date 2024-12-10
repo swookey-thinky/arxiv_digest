@@ -32,9 +32,7 @@ export async function fetchWithCorsProxy(url: string, options: RequestInit = {})
   }
 
   // For Safari, start with allOrigins proxy
-  const proxyList = browserType === 'safari' 
-    ? [CORS_PROXIES[0]] 
-    : CORS_PROXIES;
+  const proxyList = CORS_PROXIES;
 
   // Try each proxy in sequence
   let lastError: Error | null = null;
